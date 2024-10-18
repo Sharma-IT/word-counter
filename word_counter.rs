@@ -1,60 +1,54 @@
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
+use std::error::Error;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
-    let mut input = String::new();
-
-    if args.len() > 1 {
-        // Read from files specified as command-line arguments
-        for arg in &args[1..] {
-            match fs::read_to_string(arg) {
-                Ok(content)x => {
-                    input.push_str(&content);
-                    input.push('\n');
-                }
-                Err(e) => eprintln!("Error reading file {}: {}", arg, e),
-            }
-        }
+    let input = if args.len() > 1 {
+        read_from_files(&args[1..])
     } else {
-        // Read from standard input
-        println!("Enter text (press <ENTER> and Ctrl + D or press Ctrl + D three times to end input):");
-        let stdin = io::stdin();
-        for line in stdin.lock().lines() {
-            match line {
-                Ok(line) => {
-                    input.push_str(&line);
-                    input.push(' '); // Add a space to separate lines
-                }
-                Err(_) => break, // Break on error (e.g., EOF)
-            }
-        }
-    }
+        read_from_stdin()
+    }?;
 
-    // Remove the trailing space if present
-    if input.ends_with(' ') {
-        input.pop();
-    }
-
-    if !input.is_empty() {
-        let total_words = count_words(&input);
-        println!("\nTotal word count: {}", total_words);
-    } else {
+    if input.is_empty() {
         println!("No input provided.");
+        return Ok(());
     }
+
+    let total_words = count_words(&input);
+    println!("\nTotal word count: {}", total_words);
+
+    Ok(())
+}
+
+fn read_from_files(files: &[String]) -> Result<String, io::Error> {
+    let mut input = String::new();
+    for file in files {
+        let content = fs::read_to_string(file)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Error reading file {}: {}", file, e)))?;
+        input.push_str(&content);
+        input.push('\n');
+    }
+    Ok(input.trim_end().to_string())
+}
+
+fn read_from_stdin() -> Result<String, io::Error> {
+    println!("Enter text (press <ENTER> and Ctrl + D or press Ctrl + D three times to end input):");
+    let stdin = io::stdin();
+    let mut input = String::new();
+    for line in stdin.lock().lines() {
+        input.push_str(&line?);
+        input.push(' ');
+    }
+    Ok(input.trim_end().to_string())
 }
 
 fn count_words(text: &str) -> usize {
-    let mut total_words = 0;
-
-    for word in text.split_whitespace() {
-        let word = word.to_lowercase();
-        let word = word.trim_matches(|c: char| !c.is_alphanumeric());
-        if !word.is_empty() {
-            total_words += 1;
-        }
-    }
-
-    total_words
+    text.split_whitespace()
+        .filter(|word| {
+            let cleaned_word = word.trim_matches(|c: char| !c.is_alphanumeric());
+            !cleaned_word.is_empty()
+        })
+        .count()
 }
