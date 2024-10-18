@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let total_words = count_words(&input);
-    println!("\nTotal word count: {}", total_words);
+    println!("Total word count: {}", total_words);
 
     Ok(())
 }
@@ -34,16 +34,19 @@ fn read_from_files(files: &[String]) -> Result<String, io::Error> {
 }
 
 fn read_from_stdin() -> Result<String, io::Error> {
-    println!("Enter text (press <ENTER> and Ctrl + D or press Ctrl + D three times to end input):");
+    println!("Enter text (press <ENTER> on an empty line to finish input):");
     let stdin = io::stdin();
     let mut input = String::new();
     for line in stdin.lock().lines() {
-        input.push_str(&line?);
-        input.push(' ');
+        let line = line?;
+        if line.trim().is_empty() {
+            break;
+        }
+        input.push_str(&line);
+        input.push('\n');
     }
     Ok(input.trim_end().to_string())
 }
-
 fn count_words(text: &str) -> usize {
     text.split_whitespace()
         .filter(|word| {
